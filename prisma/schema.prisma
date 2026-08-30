@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum AdministrativeType {
+  STATE
+  UNION_TERRITORY
+}
+
+model AdministrativeRegion {
+  id          String             @id @default(cuid())
+  slug        String             @unique
+  name        String
+  type        AdministrativeType
+  capital     String
+  region      String
+  tagline     String
+  description String             @db.Text
+  culture     String?            @db.Text
+  bestTime    String
+  accent      String
+  latitude    Decimal?           @db.Decimal(10, 7)
+  longitude   Decimal?           @db.Decimal(10, 7)
+  published   Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  destinations Destination[]
+  tags         RegionTag[]
+
+  @@index([type])
+  @@index([region])
+  @@index([published])
+}
+
+model Destination {
+  id           String               @id @default(cuid())
+  slug         String               @unique
+  name         String
+  regionId     String
+  region       AdministrativeRegion @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  tagline      String
+  description  String               @db.Text
+  history      String               @db.Text
+  significance String               @db.Text
+  bestTime     String
+  accent       String
+  latitude     Decimal?             @db.Decimal(10, 7)
+  longitude    Decimal?             @db.Decimal(10, 7)
+  published    Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  attractions    Attraction[]
+  stays          Stay[]
+  foodSpots     FoodSpot[]
+  activities    Activity[]
+  tags          DestinationTag[]
+  favorites     Favorite[]
+  itineraryItems ItineraryItem[]
+
+  @@index([regionId])
+  @@index([published])
+}
+
+model Tag {
+  id           Int              @id @default(autoincrement())
+  slug         String           @unique
+  name         String
+  destinations DestinationTag[]
+  regions      RegionTag[]
+}
+
+model DestinationTag {
+  destinationId String
+  tagId         Int
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([destinationId, tagId])
+  @@index([tagId])
+}
+
+model RegionTag {
+  regionId String
+  tagId    Int
+  region   AdministrativeRegion @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  tag      Tag                  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([regionId, tagId])
+  @@index([tagId])
+}
+
+model Attraction {
+  id            String      @id @default(cuid())
+  name          String
+  slug          String?
+  type          String
+  description   String      @db.Text
+  priceNote     String?
+  latitude      Decimal?    @db.Decimal(10, 7)
+  longitude     Decimal?    @db.Decimal(10, 7)
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([destinationId])
+  @@index([type])
+}
+
+model Stay {
+  id            String      @id @default(cuid())
+  name          String
+  category      String
+  pricePerNight Int?
+  rating        Decimal?    @db.Decimal(2, 1)
+  description   String      @db.Text
+  airbnbUrl     String?
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([destinationId])
+  @@index([category])
+}
+
+model FoodSpot {
+  id            String      @id @default(cuid())
+  name          String
+  cuisine       String
+  area          String?
+  priceLevel    Int?
+  mustTry       String?
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([destinationId])
+  @@index([cuisine])
+}
+
+model Activity {
+  id            String      @id @default(cuid())
+  name          String
+  category      String
+  duration      String?
+  description   String      @db.Text
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([destinationId])
+  @@index([category])
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  favorites   Favorite[]
+  itineraries Itinerary[]
+}
+
+model Favorite {
+  userId        String
+  destinationId String
+  createdAt     DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, destinationId])
+  @@index([destinationId])
+}
+
+model Itinerary {
+  id        String          @id @default(cuid())
+  userId    String
+  title     String
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ItineraryItem[]
+
+  @@index([userId])
+}
+
+model ItineraryItem {
+  id            String      @id @default(cuid())
+  itineraryId   String
+  destinationId String
+  dayNumber     Int
+  note          String?     @db.Text
+  sortOrder     Int         @default(0)
+  itinerary     Itinerary   @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Restrict)
+
+  @@index([itineraryId, dayNumber, sortOrder])
+  @@index([destinationId])
+}
